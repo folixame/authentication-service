@@ -23,30 +23,6 @@ namespace Folixame.Authentication.WebService
     {
         public Security Security { get; set; }
 
-        [WebMethod]
-        public string HelloWorld()
-        {
-            MySql.Data.MySqlClient.MySqlConnection conn;
-            string myConnectionString;
-            string res = "";
-
-            myConnectionString = "server=156.35.95.49;user id=folixameadmin;"+
-                "persistsecurityinfo=True;database=fm_users;Pwd=folixando;";
-
-            try
-            {
-                conn = new MySql.Data.MySqlClient.MySqlConnection();
-                conn.ConnectionString = myConnectionString;
-                conn.Open();
-            }
-            catch (MySql.Data.MySqlClient.MySqlException ex)
-            {
-                res = ex.Message;
-            }
-
-            return res;
-        }
-
         private int LastProfileId()
         {
             int id = 0;
@@ -133,8 +109,14 @@ namespace Folixame.Authentication.WebService
                 {
                     sha1data = (byte[]) rd["password"];
                 }
-
-                password = System.Text.Encoding.ASCII.GetString(sha1data).Trim('\0'); // TODO evitar esta chapuza
+                if (sha1data != null)
+                {
+                    password = System.Text.Encoding.ASCII.GetString(sha1data).Trim('\0'); // TODO evitar esta chapuza
+                }
+                else
+                {
+                    return "Invalid User!! " + Security.Password;
+                }
 
                 if (Security != null && Security.Email != null && Security.Password == password)
                 {
@@ -156,7 +138,83 @@ namespace Folixame.Authentication.WebService
 
             }
 
-            return "Invalid User!! "+ password + "!=" + Security.Password;
+            return "Invalid User!! "+ Security.Password;
+        }
+
+        public bool userExist(string inputEmail, string inputPassword)
+        {
+            MySqlConnection conn = NewConnection();
+            MySqlCommand cmd;
+            byte[] sha1data = null;
+            string password = "";
+
+            try
+            {
+                cmd = new MySqlCommand("SELECT password FROM Users WHERE email = \"" + inputEmail + "\"", conn);
+                MySqlDataReader rd = cmd.ExecuteReader();
+                while (rd.Read())
+                {
+                    sha1data = (byte[])rd["password"];
+                }
+                if (sha1data != null)
+                {
+                    password = System.Text.Encoding.ASCII.GetString(sha1data).Trim('\0'); // TODO evitar esta chapuza
+                }
+                else
+                {
+                    return false;
+                }
+                if (Security != null && inputEmail != null && inputPassword == password)
+                {
+                    return true;
+                }
+            }
+            catch (MySqlException ex)
+            {
+                Console.WriteLine("Error: {0}", ex.ToString());
+
+            }
+            finally
+            {
+                if (conn != null)
+                {
+                    conn.Close();
+                }
+            }
+
+            return false;
+        }
+
+        [WebMethod]
+        [SoapHeader("Security", Direction = SoapHeaderDirection.In)]
+        public string Delete()
+        {
+            MySqlConnection conn = NewConnection();
+            MySqlCommand cmd;
+
+            if (userExist(Security.Email, Security.Password))
+            {
+                try
+                {
+                    cmd = new MySqlCommand("DELETE FROM Users WHERE email = @email", conn);
+                    MySqlParameter param = new MySqlParameter("@email", Security.Email);
+                    cmd.Parameters.Add(param);
+                    cmd.ExecuteNonQuery();
+                }
+                catch (MySqlException ex)
+                {
+                    Console.WriteLine("Error: {0}", ex.ToString());
+                }
+                finally
+                {
+                    if (conn != null)
+                    {
+                        conn.Close();
+                    }
+                }
+            }
+
+            return "Invalid User!! " + Security.Email;
         }
 
         private MySqlConnection NewConnection()
