@@ -62,33 +62,85 @@ namespace Folixame.Authentication.WebService
         }
 
         [WebMethod]
-        public string SignUp(String email, String password)
+        [SoapHeader("Security", Direction = SoapHeaderDirection.In)]
+        public string SignUp()
         {
             MySqlConnection conn = NewConnection();
             MySqlCommand cmd;
 
             // TODO: mejorar esto: salt, ect.
-            var sha1 = new SHA1CryptoServiceProvider();
-            var data = Encoding.ASCII.GetBytes(password);
-            var sha1data = sha1.ComputeHash(data);
+            //var sha1 = new SHA1CryptoServiceProvider();
+            //var data = Encoding.ASCII.GetBytes(password);
+            //var sha1data = sha1.ComputeHash(data);
+
+            if (Security != null && Security.Email != null && Security.Password != null)
+            {
+                var sha1data = Encoding.ASCII.GetBytes(Security.Password);
+
+                try
+                {
+                    cmd = new MySqlCommand("INSERT INTO Profiles(id, first_name, last_name, bio) VALUES (DEFAULT, NULL, NULL, NULL)", conn);
+                    cmd.Prepare();
+                    cmd.ExecuteNonQuery();
+                    int profileId = LastProfileId();
+
+                    cmd = new MySqlCommand("INSERT INTO Users(id, email, username, password, join_date, Profiles_id, Permissions_id) " +
+                        "VALUES (DEFAULT, @email, NULL, @sha1data, NOW(), @Profiles_id, 3)", conn);
+                    cmd.Prepare();
+                    cmd.Parameters.AddWithValue("@email", Security.Email);
+                    cmd.Parameters.AddWithValue("@sha1data", sha1data);
+                    cmd.Parameters.AddWithValue("@Profiles_id", profileId);
+                    cmd.ExecuteNonQuery();
+
+                }
+                catch (MySqlException ex)
+                {
+                    Console.WriteLine("Error: {0}", ex.ToString());
+
+                }
+                finally
+                {
+                    if (conn != null)
+                    {
+                        conn.Close();
+                    }
+
+                }
+            }
+            //var hashedPassword = ASCIIEncoding.GetString(sha1data);
+            //string res = System.Text.Encoding.ASCII.GetString(sha1data);
+            
+            return "OK";
+        }
+
+        [WebMethod]
+        [SoapHeader("Security", Direction = SoapHeaderDirection.In)]
+        public string LogIn()
+        {
+            MySqlConnection conn = NewConnection();
+            MySqlCommand cmd;
+            byte[] sha1data = null;
+
+
             //var hashedPassword = ASCIIEncoding.GetString(sha1data);
             //string res = System.Text.Encoding.ASCII.GetString(sha1data);
 
-            try 
+            try
             {
-                cmd = new MySqlCommand("INSERT INTO Profiles(id, first_name, last_name, bio) VALUES (DEFAULT, NULL, NULL, NULL)", conn);
-                cmd.Prepare();
-                cmd.ExecuteNonQuery();
-                int profileId = LastProfileId();
-            
-                cmd = new MySqlCommand("INSERT INTO Users(id, email, username, password, join_date, Profiles_id, Permissions_id) "+
-                    "VALUES (DEFAULT, @email, NULL, @sha1data, NOW(), @Profiles_id, 3)", conn);
-                cmd.Prepare();
-                cmd.Parameters.AddWithValue("@email", email);
-                cmd.Parameters.AddWithValue("@sha1data", sha1data);
-                cmd.Parameters.AddWithValue("@Profiles_id", profileId);
-                cmd.ExecuteNonQuery();
+                cmd = new MySqlCommand("SELECT password FROM Users WHERE email = \"" + Security.Email + "\"", conn);
+                MySqlDataReader rd = cmd.ExecuteReader();
+                while (rd.Read())
+                {
+                    sha1data = (byte[]) rd["password"];
+                }
+                
+                string password = System.Text.Encoding.ASCII.GetString(sha1data);
 
+                if (Security != null && Security.Email != null && Security.Password == password)
+                {
+                    return "Authenticate User " + Security.Email;
+                }
+                    
             }
             catch (MySqlException ex)
             {
@@ -103,22 +155,7 @@ namespace Folixame.Authentication.WebService
                 }
 
             }
-            return "OK";
-        }
 
-        [WebMethod]
-        [SoapHeader("Security", Direction = SoapHeaderDirection.In)]
-        public string Greet(String userName, String password)
-        {
-            MySqlConnection conn = NewConnection();
-
-            
-
-            MySqlCommand command = new MySqlCommand("", conn);
-
-            if (Security != null &&
-            Security.UserName != null && Security.UserName.Equals("WS-Security"))
-                return "Authenticate User " + Security.UserName;
             return "Invalid User!!";
         }
 
@@ -137,7 +174,7 @@ namespace Folixame.Authentication.WebService
     [XmlRoot(Namespace = "http://schemas.xmlsoap.org/ws/2002/04/secext")]
     public class Security : SoapHeader
     {
-        public string UserName { set; get; }
+        public string Email { set; get; }
         public string Password { set; get; } 
     }
         
