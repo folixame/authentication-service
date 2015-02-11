@@ -120,7 +120,7 @@ namespace Folixame.Authentication.WebService
             MySqlConnection conn = NewConnection();
             MySqlCommand cmd;
             byte[] sha1data = null;
-
+            string password = "";
 
             //var hashedPassword = ASCIIEncoding.GetString(sha1data);
             //string res = System.Text.Encoding.ASCII.GetString(sha1data);
@@ -133,8 +133,8 @@ namespace Folixame.Authentication.WebService
                 {
                     sha1data = (byte[]) rd["password"];
                 }
-                
-                string password = System.Text.Encoding.ASCII.GetString(sha1data);
+
+                password = System.Text.Encoding.ASCII.GetString(sha1data).Trim('\0'); // TODO evitar esta chapuza
 
                 if (Security != null && Security.Email != null && Security.Password == password)
                 {
@@ -156,7 +156,7 @@ namespace Folixame.Authentication.WebService
 
             }
 
-            return "Invalid User!!";
+            return "Invalid User!! "+ password + "!=" + Security.Password;
         }
 
         private MySqlConnection NewConnection()
