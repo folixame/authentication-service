@@ -72,6 +72,7 @@ namespace Folixame.Authentication.WebService
             var data = Encoding.ASCII.GetBytes(password);
             var sha1data = sha1.ComputeHash(data);
             //var hashedPassword = ASCIIEncoding.GetString(sha1data);
+            //string res = System.Text.Encoding.ASCII.GetString(sha1data);
 
             try 
             {
