@@ -13,6 +13,10 @@ namespace Folixame.Authentication.WebService
 {
     /// <summary>
     /// Descripción breve de Users
+    /// 
+    /// ERROR codes:
+    /// 1: Internal error.
+    /// 4: Invalid username or password.
     /// </summary>
     [WebService(Namespace = "http://folixa.me/")]
     [WebServiceBinding(ConformsTo = WsiProfiles.BasicProfile1_1)]
@@ -189,32 +193,68 @@ namespace Folixame.Authentication.WebService
         [SoapHeader("Security", Direction = SoapHeaderDirection.In)]
         public string Delete()
         {
+            if (Security == null || Security.Email == null || Security.Password == null || !userExist(Security.Email, Security.Password))
+                return "ERROR: 4";
+
             MySqlConnection conn = NewConnection();
             MySqlCommand cmd;
 
-            if (userExist(Security.Email, Security.Password))
+            try
             {
-                try
-                {
-                    cmd = new MySqlCommand("DELETE FROM Users WHERE email = @email", conn);
-                    MySqlParameter param = new MySqlParameter("@email", Security.Email);
-                    cmd.Parameters.Add(param);
-                    cmd.ExecuteNonQuery();
-                }
-                catch (MySqlException ex)
-                {
-                    Console.WriteLine("Error: {0}", ex.ToString());
-                }
-                finally
-                {
-                    if (conn != null)
-                    {
-                        conn.Close();
-                    }
-                }
+                cmd = new MySqlCommand("DELETE FROM Users WHERE email = @email", conn);
+                MySqlParameter param = new MySqlParameter("@email", Security.Email);
+                cmd.Parameters.Add(param);
+                cmd.ExecuteNonQuery();
+            }
+            catch (MySqlException ex)
+            {
+                Console.WriteLine("Error: {0}", ex.ToString());
+            }
+            finally
+            {
+                if (conn != null)
+                    conn.Close();
+            }
+            
+            return "OK";
+        }
+
+        [WebMethod]
+        [SoapHeader("Security", Direction = SoapHeaderDirection.In)]
+        public string Update(string inputEmail, string inputPassword)
+        {
+            if (Security == null || Security.Email == null || Security.Password == null || !userExist(Security.Email, Security.Password))
+                return "ERROR: 4";
+
+            MySqlConnection conn = NewConnection();
+            MySqlCommand cmd = null;
+            MySqlParameter param = null;
+
+            try
+            {
+                cmd = new MySqlCommand("UPDATE Users SET email = @inputEmail, password = @inputPassword WHERE email = @email", conn);
+
+                param = new MySqlParameter("@inputEmail", inputEmail);
+                cmd.Parameters.Add(param);
+                param = new MySqlParameter("@inputPassword", inputPassword);
+                cmd.Parameters.Add(param);
+                param = new MySqlParameter("@email", Security.Email);
+                cmd.Parameters.Add(param);
+
+                cmd.ExecuteNonQuery();
+            }
+            catch (MySqlException ex)
+            {
+                Console.WriteLine("Error: {0}", ex.ToString());
+                return "ERROR: 1";
+            }
+            finally
+            {
+                if (conn != null)
+                    conn.Close();
             }
 
-            return "Invalid User!! " + Security.Email;
+            return "OK";
         }
 
         private MySqlConnection NewConnection()
