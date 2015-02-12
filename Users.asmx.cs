@@ -197,12 +197,29 @@ namespace Folixame.Authentication.WebService
                 return "ERROR: 4";
 
             MySqlConnection conn = NewConnection();
-            MySqlCommand cmd;
+            MySqlCommand cmd = null;
+            MySqlParameter param = null;
+            int id = 0;
 
             try
             {
-                cmd = new MySqlCommand("DELETE FROM Users WHERE email = @email", conn);
-                MySqlParameter param = new MySqlParameter("@email", Security.Email);
+                cmd = new MySqlCommand("SELECT id FROM Users WHERE email = @email", conn);
+                param = new MySqlParameter("@email", Security.Email);
+                cmd.Parameters.Add(param);
+
+                MySqlDataReader rd = cmd.ExecuteReader();
+                while(rd.Read()) {
+                    id = System.Convert.ToInt32(rd["id"]);
+                }
+                rd.Close();
+
+                cmd = new MySqlCommand("DELETE FROM Users WHERE id = @id", conn);
+                param = new MySqlParameter("@id", id);
+                cmd.Parameters.Add(param);
+                cmd.ExecuteNonQuery();
+
+                cmd = new MySqlCommand("DELETE FROM Profiles WHERE id = @id", conn);
+                param = new MySqlParameter("@id", id);
                 cmd.Parameters.Add(param);
                 cmd.ExecuteNonQuery();
             }
@@ -255,6 +272,43 @@ namespace Folixame.Authentication.WebService
             }
 
             return "OK";
+        }
+
+        [WebMethod]
+        public List<Profile> GetProfiles()
+        {
+            MySqlConnection conn = NewConnection();
+            MySqlCommand cmd = null;
+            List<Profile> profiles = new List<Profile>();
+
+            try
+            {
+                cmd = new MySqlCommand("SELECT * FROM Profiles", conn);
+                MySqlDataReader rd = cmd.ExecuteReader();
+
+                while (rd.Read())
+                {
+                    Profile profile = new Profile(
+                            System.Convert.ToInt32(rd["id"]),
+                            rd["first_name"].ToString(),
+                            rd["last_name"].ToString(),
+                            rd["bio"].ToString()
+                        );
+                    profiles.Add(profile);
+                }
+            }
+            catch (MySqlException ex)
+            {
+                Console.WriteLine("Error: {0}", ex.ToString());
+                throw new Exception("ERROR: 1");
+            }
+            finally
+            {
+                if (conn != null)
+                    conn.Close();
+            }
+
+            return profiles;
         }
 
         private MySqlConnection NewConnection()
