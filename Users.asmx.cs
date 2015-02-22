@@ -377,6 +377,71 @@ namespace Folixame.Authentication.WebService
             return profile;
         }
 
+        [WebMethod]
+        public List<Favourite> GetFavourites(String email)
+        {
+            MySqlConnection conn = NewConnection();
+            MySqlCommand cmd = null;
+            List<Favourite> favourites = new List<Favourite>();
+
+            try
+            {
+                cmd = new MySqlCommand("select Favourites.id, Favourites.Users_id, Favourites.`Event_id` from Favourites, Users where Users_id = Users.id and Users.email = \"" + email + "\"", conn);
+                MySqlDataReader rd = cmd.ExecuteReader();
+
+                while (rd.Read())
+                {
+                    int id = System.Convert.ToInt32(rd["id"]);
+                    int userId = System.Convert.ToInt32(rd["Users_id"]);
+                    int eventId = System.Convert.ToInt32(rd["Event_id"]);
+                    Favourite fav = new Favourite(id, userId, eventId);
+                    favourites.Add(fav);
+                }
+            }
+            catch (MySqlException ex)
+            {
+                Console.WriteLine("Error: {0}", ex.ToString());
+                throw new Exception("ERROR: 1");
+            }
+            finally
+            {
+                if (conn != null)
+                    conn.Close();
+            }
+
+            return favourites;
+        }
+
+        public string AddFavourite(int userId, int eventId)
+        {
+            MySqlConnection conn = NewConnection();
+            MySqlCommand cmd;
+
+            try
+            {
+
+                cmd = new MySqlCommand("insert into Favourites(id, Users_id, Event_id) values (default, @userId, @eventId)", conn);               
+                cmd.Prepare();
+                cmd.Parameters.AddWithValue("@userId", userId);
+                cmd.Parameters.AddWithValue("@eventId", eventId);
+                cmd.ExecuteNonQuery();
+            }
+            catch (MySqlException ex)
+            {
+                Console.WriteLine("Error: {0}", ex.ToString());
+
+            }
+            finally
+            {
+                if (conn != null)
+                {
+                    conn.Close();
+                }
+
+            }
+            return "OK";
+        }
+
         private MySqlConnection NewConnection()
         {
             string connectionString = "server=156.35.95.49;user id=folixameadmin;" +
