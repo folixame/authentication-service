@@ -412,10 +412,47 @@ namespace Folixame.Authentication.WebService
             return favourites;
         }
 
-        public string AddFavourite(int userId, int eventId)
+        [WebMethod]
+        public int GetUserId(String email) {
+            MySqlConnection conn = NewConnection();
+            MySqlCommand cmd;
+
+            int userId = 0;
+
+            try
+            {
+
+                cmd = new MySqlCommand("select id from Users where Users.`email` = \"" + email + "\"", conn);               
+                MySqlDataReader rd = cmd.ExecuteReader();
+
+                while (rd.Read())
+                {
+                    userId = System.Convert.ToInt32(rd["id"]);
+                }
+            }
+            catch (MySqlException ex)
+            {
+                Console.WriteLine("Error: {0}", ex.ToString());
+
+            }
+            finally
+            {
+                if (conn != null)
+                {
+                    conn.Close();
+                }
+
+            }
+            return userId;
+        }
+
+        [WebMethod]
+        public string AddFavourite(string email, int eventId)
         {
             MySqlConnection conn = NewConnection();
             MySqlCommand cmd;
+
+            int userId = GetUserId(email);
 
             try
             {
